@@ -105,30 +105,9 @@ namespace Nevron.Nov.Diagram.Converter
 
         #endregion
 
-        #region Protected Methods
+        #region Protected Overridable - Toolbar
 
-        /// <summary>
-        /// Creates a Nevron Drawing View with commanding (context menus only).
-        /// </summary>
-        /// <returns></returns>
-        protected Nevron.Diagram.WinForm.NDrawingView CreateNevronDrawingView()
-        {
-            Nevron.Diagram.WinForm.NDrawingView nevronDrawingView = new Nevron.Diagram.WinForm.NDrawingView();
-            nevronDrawingView.Document = new Nevron.Diagram.NDrawingDocument();
-
-            // Create a Nevron command bars manager to add support for context menu commands in the Nevron Drawing View
-            Nevron.Diagram.WinForm.Commands.NDiagramCommandBarsManager manager = new Nevron.Diagram.WinForm.Commands.NDiagramCommandBarsManager();
-            manager.View = nevronDrawingView;
-            manager.Toolbars.Clear();
-
-            return nevronDrawingView;
-        }
-
-        #endregion
-
-        #region Implementation
-
-        private NToolBar CreateNovToolbar(string docType)
+        protected virtual NToolBar CreateNovToolbar(string docType)
         {
             NToolBar toolbar = new NToolBar();
             toolbar.Pendant.Visibility = ENVisibility.Collapsed;
@@ -157,6 +136,27 @@ namespace Nevron.Nov.Diagram.Converter
             toolbar.Items.Add(saveNovButton);
 
             return toolbar;
+        }
+
+        #endregion
+
+        #region Protected Methods
+
+        /// <summary>
+        /// Creates a Nevron Drawing View with commanding (context menus only).
+        /// </summary>
+        /// <returns></returns>
+        protected Nevron.Diagram.WinForm.NDrawingView CreateNevronDrawingView()
+        {
+            Nevron.Diagram.WinForm.NDrawingView nevronDrawingView = new Nevron.Diagram.WinForm.NDrawingView();
+            nevronDrawingView.Document = new Nevron.Diagram.NDrawingDocument();
+
+            // Create a Nevron command bars manager to add support for context menu commands in the Nevron Drawing View
+            Nevron.Diagram.WinForm.Commands.NDiagramCommandBarsManager manager = new Nevron.Diagram.WinForm.Commands.NDiagramCommandBarsManager();
+            manager.View = nevronDrawingView;
+            manager.Toolbars.Clear();
+
+            return nevronDrawingView;
         }
 
         #endregion

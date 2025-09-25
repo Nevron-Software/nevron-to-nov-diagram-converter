@@ -16,12 +16,13 @@
             NDrawingDocument novDrawingDocument = new NDrawingDocument();
 
             // Create NOV Diagram page
-            NPage page = novDrawingDocument.Content.ActivePage;
-            page.Bounds = NDiagramConverter.ToNRectangle(drawingDocument.Bounds);
+            m_CurrentPage = novDrawingDocument.Content.ActivePage;
+            ImportDrawingScale(drawingDocument, m_CurrentPage);
+			m_CurrentPage.Bounds = NDiagramConverter.ToNRectangle(m_CurrentPage, drawingDocument.Bounds);
 
             if (drawingDocument.BackgroundStyle != null)
             {
-                page.BackgroundFill = NFillStyleImporter.ToFill(drawingDocument.BackgroundStyle.FillStyle);
+				m_CurrentPage.BackgroundFill = NFillStyleImporter.ToFill(drawingDocument.BackgroundStyle.FillStyle);
             }
 
             // Get the Nevron drawing document layers
@@ -32,7 +33,7 @@
             for (int i = 0; i < layers.Count; i++)
             {
                 Nevron.Diagram.NLayer nevronLayer = (Nevron.Diagram.NLayer)layers[i];
-                ImportLayer(page, nevronLayer);
+                ImportLayer(m_CurrentPage, nevronLayer);
             }
 
             // Pass 2:
@@ -75,9 +76,28 @@
 
         #endregion
 
-        #region Implementation - Layers and Page Items
+        #region Implementation - Drawing Scale
 
-        private void ImportLayer(NPage novPage, Nevron.Diagram.NLayer nevronLayer)
+        private void ImportDrawingScale(Nevron.Diagram.NDrawingDocument drawingDocument, NPage novPage)
+        {
+            if (drawingDocument.DrawingScaleMode == Nevron.Diagram.DrawingScaleMode.CustomScale &&
+                drawingDocument.CustomScale != 1)
+            {
+                // There is custom scaling in the old drawing, so apply it to the new one
+                NUnit logicalUnit, displayUnit;
+                NDiagramConverter.TryConvertUnit(drawingDocument.CustomWorldMeasurementUnit, out displayUnit);
+                NDiagramConverter.TryConvertUnit(drawingDocument.MeasurementUnit, out logicalUnit);
+
+                novPage.LogicalLength = new NLength(1, logicalUnit);
+                novPage.DisplayLength = new NLength(drawingDocument.CustomScale, displayUnit);
+            }
+        }
+
+		#endregion
+
+		#region Implementation - Layers and Page Items
+
+		private void ImportLayer(NPage novPage, Nevron.Diagram.NLayer nevronLayer)
         {
             if (!nevronLayer.Visible)
                 return;
@@ -97,7 +117,7 @@
                     {
                         // Set the name and the user ID of the NOV shape
                         novPageItem.Name = nevronDiagramElement.Name;
-                        novPageItem.UserId = nevronDiagramElement.UniqueId.ToString();
+						novPageItem.UserId = nevronDiagramElement.UniqueId.ToString();
 
                         if (nevronDiagramElement.Tag != null)
                         {

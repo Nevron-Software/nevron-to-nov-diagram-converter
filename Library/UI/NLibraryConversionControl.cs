@@ -86,7 +86,7 @@ namespace Nevron.Nov.Diagram.Converter
             nevronView.Dock = DockStyle.Fill;
             table.Controls.Add(nevronView, 0, 0);
 
-            // Create a Nevron drawing view for testing
+            // Create a Nevron drawing view for testing the library items
             GroupBox groupBox = new GroupBox();
             groupBox.Text = "Testing Nevron Drawing View";
             groupBox.Dock = DockStyle.Fill;
@@ -100,15 +100,18 @@ namespace Nevron.Nov.Diagram.Converter
         }
         protected override NWidget CreateNovContent(out INDocumentView novView)
         {
-            novView = new NLibraryView();
+			// Create a NOV library view
+            NLibraryView libraryView = new NLibraryView();
+			libraryView.MaxHeight = 300;
+			novView = libraryView;
 
             // Create a NOV drawing view for testing of the library items
-            NDrawingView testingDrawingView = new NDrawingView();
+            NDrawingView novDrawingView = new NDrawingView();
 
             // Create a group box for the NOV drawing view
             NLabel groupBoxHeader = new NLabel(NLoc.Get("Testing NOV Drawing View"));
             NStylePropertyEx.SetRelativeFontSize(groupBoxHeader, ENRelativeFontSize.Large);
-            NGroupBox groupBox = new NGroupBox(groupBoxHeader, testingDrawingView);
+            NGroupBox groupBox = new NGroupBox(groupBoxHeader, novDrawingView);
 
             // Place the library view and the drawing view in a pair box
             NPairBox pairBox = new NPairBox(novView, groupBox, ENPairBoxRelation.Box1AboveBox2);

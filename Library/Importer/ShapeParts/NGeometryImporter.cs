@@ -78,8 +78,9 @@ namespace Nevron.Nov.Diagram.Converter
 
 			// The shape consists of a Nevron path primitive, so create a draw path command
 			// Get the graphics path points in scene coordinates
+			NPage novPage = novGeometry.OwnerShape.OwnerPage;
 			System.Drawing.PointF[] nevronPoints = nevronPathPrimitive.Path.PathPoints;
-			NPoint[] novPoints = NDiagramConverter.ToPoints(nevronPoints);
+			NPoint[] novPoints = NDiagramConverter.ToNPoints(novPage, nevronPoints);
 
 			NMatrix pageTransform;
 			if (NDiagramImporter.IsInLibrary(nevronPathPrimitive))
@@ -123,7 +124,7 @@ namespace Nevron.Nov.Diagram.Converter
             }
             else
             {
-                drawPath = new NDrawPath(NDiagramConverter.ToNRectangle(nevronPathPrimitive.ModelBounds), pathPoints);
+                drawPath = new NDrawPath(NDiagramConverter.ToNRectangle(novPage, nevronPathPrimitive.ModelBounds), pathPoints);
                 drawPath.Relative = false;
             }
 

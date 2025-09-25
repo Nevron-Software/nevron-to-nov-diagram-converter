@@ -67,11 +67,30 @@ namespace Nevron.Nov.Diagram.Converter
             }
         }
 
-        #endregion
+		#endregion
 
-        #region Protected Overrides - from NConversionControl
+		#region Protected Overrides - Toolbar
 
-        protected override Control CreateNevronContent(out Nevron.Diagram.WinForm.NView nevronView)
+		protected override NToolBar CreateNovToolbar(string docType)
+		{
+			NToolBar toolbar = base.CreateNovToolbar(docType);
+
+			toolbar.Items.Add(new NCommandBarSeparator());
+
+			NButton zoomToFitButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_View_FitZoomMode_png,
+				NLoc.Get("Zoom to Fit"));
+			zoomToFitButton.Click += OnZoomToFitButtonClick;
+			toolbar.Items.Add(zoomToFitButton);
+
+
+			return toolbar;
+		}
+
+		#endregion
+
+		#region Protected Overrides - from NConversionControl
+
+		protected override Control CreateNevronContent(out Nevron.Diagram.WinForm.NView nevronView)
         {
             nevronView = CreateNevronDrawingView();
             return nevronView;
@@ -114,11 +133,24 @@ namespace Nevron.Nov.Diagram.Converter
             return persistencyManager.SaveDrawingToFile((Nevron.Diagram.NDrawingDocument)NevronDocument, filePath);
         }
 
-        #endregion
+		#endregion
 
-        #region Constants
+		#region Event Handlers
 
-        private static readonly string[] DrawingFileExtensions = new string[] { "ndx", "xml", "ndb" };
+		private void OnZoomToFitButtonClick(NEventArgs arg)
+		{
+			Nevron.Diagram.WinForm.NDrawingView nevronDrawingView = (Nevron.Diagram.WinForm.NDrawingView)m_NevronView;
+			nevronDrawingView.ViewLayout = Nevron.Diagram.ViewLayout.Fit;
+
+			NDrawingView novDrawingView = (NDrawingView)m_NovView;
+			novDrawingView.ActivePage.ZoomMode = ENZoomMode.Fit;
+		}
+
+		#endregion
+
+		#region Constants
+
+		private static readonly string[] DrawingFileExtensions = new string[] { "ndx", "xml", "ndb" };
 
         #endregion
     }

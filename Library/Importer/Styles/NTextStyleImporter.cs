@@ -1,6 +1,4 @@
-﻿using System;
-
-using Nevron.Nov.Graphics;
+﻿using Nevron.Nov.Graphics;
 using Nevron.Nov.Text;
 
 namespace Nevron.Nov.Diagram.Converter

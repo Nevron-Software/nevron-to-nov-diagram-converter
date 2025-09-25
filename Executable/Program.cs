@@ -2,6 +2,7 @@
 using System.Windows.Forms;
 
 using Nevron.Nov.Barcode;
+using Nevron.Nov.Grid;
 using Nevron.Nov.Text;
 using Nevron.Nov.Windows.Forms;
 
@@ -20,9 +21,11 @@ namespace Nevron.Nov.Diagram.Converter
 
 			// Install Nevron Open Vision for Windows Forms
 			NNovApplicationInstaller.Install(
+				NBarcodeModule.Instance,
 				NTextModule.Instance,
-				NDiagramModule.Instance,
-				NBarcodeModule.Instance);
+				NGridModule.Instance,
+				NDiagramModule.Instance
+			);
 
 			// Configure the application to run in developer mode, so that expressions and additional
 			// properties are visible in the designers

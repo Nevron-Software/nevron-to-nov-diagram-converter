@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Nevron.Diagram;
 using Nevron.Nov.DataStructures;
 using Nevron.Nov.Diagram.Expressions;
 using Nevron.Nov.Diagram.Shapes;
@@ -354,7 +353,7 @@ namespace Nevron.Nov.Diagram.Converter
         private NRoutableConnector CreateRoutableConnector(Nevron.Diagram.NRoutableConnector nevronConnector)
         {
             NRoutableConnector novConnector = new NRoutableConnector();
-            NPoint[] novPoints = NDiagramConverter.ToNPoints(nevronConnector.Points);
+            NPoint[] novPoints = NDiagramConverter.ToNPoints(m_CurrentPage, nevronConnector.Points);
 
             switch (nevronConnector.ConnectorType)
             {
@@ -403,17 +402,18 @@ namespace Nevron.Nov.Diagram.Converter
 		private void ImportTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
         {
             NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+			NPage novPage = novShape.OwnerPage;
 
             if (novShape.ShapeType == ENShapeType.Shape1D)
             {
-                // This is a 1D shape, so import begin and end points and be done with the transform
-                NPoint beginPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(nevronModel.StartPoint));
+				// This is a 1D shape, so import begin and end points and be done with the transform
+                NPoint beginPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.StartPoint));
                 novShape.SetBeginPoint(beginPoint);
 
-                NPoint endPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(nevronModel.EndPoint));
+                NPoint endPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.EndPoint));
                 novShape.SetEndPoint(endPoint);
 
-				if (IsInLibrary(nevronModel) && !(nevronModel is NLineShape))
+				if (IsInLibrary(nevronModel) && !(nevronModel is Nevron.Diagram.NLineShape))
 				{
 					SetAngle(novShape, novParentPageTransform, nevronModel);
 				}
@@ -431,8 +431,8 @@ namespace Nevron.Nov.Diagram.Converter
                 // NOTE: Width and Height are measured as the distance of the basis points transformed in scene coordinates.
                 // Because in NOV Diagram all shape transformations are not scaling, the measured width and height are correct.
                 NPoint[] points = GetNevronShapeBasisPointsInSceneCoordinates(nevronModel);
-                double width = NGeometry2D.PointsDistance(points[0], points[1]);
-                double height = NGeometry2D.PointsDistance(points[0], points[2]);
+                double width = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[1]));
+                double height = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[2]));
 
                 if (resizeX && resizeY)
                 {
@@ -493,7 +493,7 @@ namespace Nevron.Nov.Diagram.Converter
             {
                 // NOTE: The Pin defines the offset of the transformation. So it is calculated as the offset of the following transform:
                 // nevronSceneTransform / novParentPageTransform
-                NPoint pin = NDiagramConverter.ToNPoint(nevronModel.PinPoint);
+                NPoint pin = NDiagramConverter.ToNPoint(novPage, nevronModel.PinPoint);
                 pin = novParentPageTransform.InvertPoint(pin);
 
                 // PinX and PinY do not have expressions, so assign local values
@@ -511,12 +511,12 @@ namespace Nevron.Nov.Diagram.Converter
         {
             if (novShape.Width == 0)
             {
-                novShape.Width = nevronModel.Width;
+                novShape.Width = NDiagramConverter.ConvertCoordinate(novShape.OwnerPage, nevronModel.Width);
             }
 
             if (novShape.Height == 0)
             {
-                novShape.Height = nevronModel.Height;
+                novShape.Height = NDiagramConverter.ConvertCoordinate(novShape.OwnerPage, nevronModel.Height);
             }
         }
         private NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
@@ -638,6 +638,8 @@ namespace Nevron.Nov.Diagram.Converter
         #endregion
 
         #region Fields
+
+		protected NPage m_CurrentPage;
 
         private NMap<Nevron.Dom.INNode, NPageItem> m_Map;
         private NConnectorShapeFactory m_ConnectorFactory;
