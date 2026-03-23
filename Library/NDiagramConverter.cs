@@ -30,8 +30,8 @@ namespace Nevron.Nov.Diagram.Converter
 
 			// NOV License
 			NLicenseManager.Instance.SetLicense(new NLicense(
-				"59000002577f580202130068056c08550ed9002d96592f57," + // Desktop redistribution key
-				"a6160bbd05e03c079104fba32a0093006fb176761dc0ef49"    // Evaluation key (for debugging)
+				"a9ed109c17b400040048c5fffc02d10094e3dd008f022a4c," + // Desktop redistribution key
+				"5600ffc395c5d4eb0017a79f40cf01a410e3fc8e55aec98c"    // Evaluation key (for debugging)
 			));
 		}
 
