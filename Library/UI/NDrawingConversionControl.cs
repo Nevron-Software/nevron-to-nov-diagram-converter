@@ -77,7 +77,7 @@ namespace Nevron.Nov.Diagram.Converter
 
 			toolbar.Items.Add(new NCommandBarSeparator());
 
-			NButton zoomToFitButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_View_FitZoomMode_png,
+			NButton zoomToFitButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_View_FitZoomMode_svg,
 				NLoc.Get("Zoom to Fit"));
 			zoomToFitButton.Click += OnZoomToFitButtonClick;
 			toolbar.Items.Add(zoomToFitButton);

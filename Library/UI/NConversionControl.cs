@@ -4,7 +4,6 @@ using System.Windows.Forms;
 
 using Nevron.Nov.Dom;
 using Nevron.Nov.UI;
-
 using Nevron.Nov.Windows.Forms;
 
 namespace Nevron.Nov.Diagram.Converter
@@ -113,24 +112,24 @@ namespace Nevron.Nov.Diagram.Converter
             toolbar.Pendant.Visibility = ENVisibility.Collapsed;
             toolbar.Gripper.Visibility = ENVisibility.Collapsed;
 
-            NButton openButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_File_Open_png,
+            NButton openButton = NButton.CreateImageAndText(Presentation.NResources.Image_File_Open_svg,
                 String.Format(NLoc.Get("Open Nevron {0}"), docType));
             openButton.Click += OnOpenButtonClick;
             toolbar.Items.Add(openButton);
 
-            NButton saveButton = NButton.CreateImageAndText(Nevron.Nov.Diagram.NResources.Image_Library_LibrarySave_png,
+            NButton saveButton = NButton.CreateImageAndText(Presentation.NResources.Image_File_Save_svg,
                 String.Format(NLoc.Get("Save Nevron {0}"), docType));
             saveButton.Click += OnSaveNetButtonClick;
             toolbar.Items.Add(saveButton);
 
             toolbar.Items.Add(new NCommandBarSeparator());
 
-            NButton importButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_Insert_VectorImage_png,
+            NButton importButton = NButton.CreateImageAndText(Presentation.NResources.Image_Insert_VectorImage_svg,
                 NLoc.Get("Import to NOV"));
             importButton.Click += OnImportButtonClick;
             toolbar.Items.Add(importButton);
 
-            NButton saveNovButton = NButton.CreateImageAndText(Nevron.Nov.Presentation.NResources.Image_File_Save_png,
+            NButton saveNovButton = NButton.CreateImageAndText(Presentation.NResources.Image_File_Save_svg,
                 String.Format(NLoc.Get("Save NOV {0}"), docType));
             saveNovButton.Click += OnSaveNovButtonClick;
             toolbar.Items.Add(saveNovButton);
