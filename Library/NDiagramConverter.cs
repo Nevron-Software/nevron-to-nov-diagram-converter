@@ -21,23 +21,43 @@ namespace Nevron.Nov.Diagram.Converter
 		/// </summary>
 		static NDiagramConverter()
 		{
-			// Nevron License
-			Nevron.NLicenseManager.Instance.SetLicense(new Nevron.NLicense(
-				"000adf46-0072-02ef-99e7-02e200062199," + // Desktop redistribution key
-				"002100d6-d913-423c-196f-5c04f27db2f4"    // Evaluation key (for debugging)
-			));
-			Nevron.NLicenseManager.Instance.LockLicense = true;
-
-			// NOV License
-			NLicenseManager.Instance.SetLicense(new NLicense(
-				"a9ed109c17b400040048c5fffc02d10094e3dd008f022a4c," + // Desktop redistribution key
-				"5600ffc395c5d4eb0017a79f40cf01a410e3fc8e55aec98c"    // Evaluation key (for debugging)
-			));
+			LicenseNevronComponents();
 		}
 
 		#endregion
 
-		#region Public Methods
+		#region Nevron License
+
+		private static void LicenseNevronComponents()
+		{
+			const string LicenseFileName = "Licenses.txt";
+			if (!File.Exists(LicenseFileName))
+				return;
+
+			// Load the license keys from file
+			string nevronLicense, novLicense;
+			try
+			{
+				using (StreamReader reader = new StreamReader(LicenseFileName))
+				{
+					nevronLicense = reader.ReadLine();
+					novLicense = reader.ReadLine();
+				}
+			}
+			catch
+			{
+				return;
+			}
+
+			// Apply the license keys
+			Nevron.NLicenseManager.Instance.SetLicense(new Nevron.NLicense(nevronLicense));
+			Nevron.NLicenseManager.Instance.LockLicense = true;
+			NLicenseManager.Instance.SetLicense(novLicense);
+		}
+
+		#endregion
+
+		#region Public Methods - UI
 
 		/// <summary>
 		/// Creates a form that can be used to visually convert Nevron Diagram drawings to NOV Diagram drawings.
@@ -162,11 +182,14 @@ namespace Nevron.Nov.Diagram.Converter
 		internal static bool TryConvertUnit(GraphicsCore.NMeasurementUnit nevronUnit, out NUnit novUnit)
 		{
 			// Try to get a unit via reflection
-			FieldInfo field = typeof(NUnit).GetField(nevronUnit.Name);
-			if (field != null)
+			if (nevronUnit != null)
 			{
-				novUnit = (NUnit)field.GetValue(null);
-				return true;
+				FieldInfo field = typeof(NUnit).GetField(nevronUnit.Name);
+				if (field != null)
+				{
+					novUnit = (NUnit)field.GetValue(null);
+					return true;
+				}
 			}
 
 			novUnit = NUnit.DIP;
@@ -229,9 +252,9 @@ namespace Nevron.Nov.Diagram.Converter
 			);
 		}
 
-		internal static double ConvertCoordinate(NPage page, double coordinate)
+		internal static double ConvertCoordinate(NPage novPage, double coordinate)
 		{
-			return page != null ? page.LogicalToDips(coordinate) : coordinate;
+			return novPage != null ? novPage.LogicalToDips(coordinate) : coordinate;
 		}
 
 		#endregion

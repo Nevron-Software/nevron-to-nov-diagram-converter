@@ -2,7 +2,7 @@
 {
 	internal class NDrawingImporter : NDiagramImporter
     {
-        #region Public Methods
+        #region Public Methods - Import
 
         /// <summary>
         /// Creates a NOV Diagram drawing document from the given Nevron Diagram drawing document.
@@ -74,9 +74,18 @@
             return novDrawingDocument;
         }
 
-        #endregion
+		#endregion
 
-        #region Implementation - Drawing Scale
+		#region Page Items
+
+		protected override NPage GetOwnerPage(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		{
+			return novShape?.OwnerPage;
+		}
+
+		#endregion
+
+		#region Drawing Scale and Transform
 
         private void ImportDrawingScale(Nevron.Diagram.NDrawingDocument drawingDocument, NPage novPage)
         {
@@ -95,7 +104,7 @@
 
 		#endregion
 
-		#region Implementation - Layers and Page Items
+		#region Layers
 
 		private void ImportLayer(NPage novPage, Nevron.Diagram.NLayer nevronLayer)
         {

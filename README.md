@@ -2,6 +2,8 @@
 ## Application
 The Nevron to NOV Diagram Converter application can be used to convert Nevron Diagram drawings and libraries to NOV Diagram drawings and libraries. You can either download the project from this repository, open it with Visual Studio and compile it or download the application binaries from the "Releases" section here in GitHub.
 
+To eliminate the watermarks, open the "Licenses.txt" file and add your Nevron Diagram desktop license key on the first line and your NOV Diagram desktop license key on the second line.
+
 After you run the application, open the first tab ("Drawings") and then click the <b>Open Nevron Drawing</b> button to open a Nevron Diagram drawing and convert it to a NOV Drawing. You can then click the <b>Save NOV Drawing</b> button to save the drawing in the new format. To convert libraries, open the second tab ("Libraries").
 
 ## Library

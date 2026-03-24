@@ -7,15 +7,16 @@ namespace Nevron.Nov.Diagram.Converter
 {
     internal static class NGeometryImporter
     {
-        #region Public Methods
+		#region Public Methods
 
-        /// <summary>
-        /// Imports the geometry of the specified Nevron shape to the given NOV shape.
-        /// </summary>
-        /// <param name="novShape"></param>
-        /// <param name="nevronModel"></param>
-        /// <returns>The geometry of the NOV shape.</returns>
-        public static NGeometry Import(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		/// <summary>
+		/// Imports the geometry of the specified Nevron shape to the given NOV shape.
+		/// </summary>
+		/// <param name="novShape"></param>
+		/// <param name="nevronModel"></param>
+		/// <param name="novPage"></param>
+		/// <returns>The geometry of the NOV shape.</returns>
+		public static NGeometry Import(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
         {
             NGeometry novGeometry = novShape.GeometryNoCreate;
 
@@ -35,7 +36,7 @@ namespace Nevron.Nov.Diagram.Converter
                 }
 
                 // Import the primitive of the path shape
-                ImportPrimitive(novShape, nevronPathShape.Primitive);
+                ImportPrimitive(novShape, nevronPathShape.Primitive, novPage);
             }
             else if (nevronModel is Nevron.Diagram.NPrimitiveModel)
             {
@@ -45,7 +46,7 @@ namespace Nevron.Nov.Diagram.Converter
                     novShape.Geometry = novGeometry;
                 }
 
-                ImportPrimitive(novShape, (Nevron.Diagram.NPrimitiveModel)nevronModel);
+                ImportPrimitive(novShape, (Nevron.Diagram.NPrimitiveModel)nevronModel, novPage);
             }
 
             return novGeometry;
@@ -55,11 +56,11 @@ namespace Nevron.Nov.Diagram.Converter
 
         #region Implementation
 
-        private static void ImportPrimitive(NShape novShape, Nevron.Diagram.NPrimitiveModel nevronPrimitive)
+        private static void ImportPrimitive(NShape novShape, Nevron.Diagram.NPrimitiveModel nevronPrimitive, NPage novPage)
         {
             if (nevronPrimitive is Nevron.Diagram.NPathPrimitive)
             {
-                ImportGeometryCommands(novShape.Geometry, (Nevron.Diagram.NPathPrimitive)nevronPrimitive);
+                ImportGeometryCommands(novShape.Geometry, (Nevron.Diagram.NPathPrimitive)nevronPrimitive, novPage);
             }
             else if (nevronPrimitive is Nevron.Diagram.NTextPrimitive)
             {
@@ -71,32 +72,32 @@ namespace Nevron.Nov.Diagram.Converter
 		/// </summary>
 		/// <param name="novGeometry"></param>
 		/// <param name="nevronPathPrimitive"></param>
-		private static void ImportGeometryCommands(NGeometry novGeometry, Nevron.Diagram.NPathPrimitive nevronPathPrimitive)
+		/// <param name="novPage"></param>
+		private static void ImportGeometryCommands(NGeometry novGeometry, Nevron.Diagram.NPathPrimitive nevronPathPrimitive, NPage novPage)
 		{
 			if (nevronPathPrimitive == null)
 				return;
 
 			// The shape consists of a Nevron path primitive, so create a draw path command
 			// Get the graphics path points in scene coordinates
-			NPage novPage = novGeometry.OwnerShape.OwnerPage;
 			System.Drawing.PointF[] nevronPoints = nevronPathPrimitive.Path.PathPoints;
 			NPoint[] novPoints = NDiagramConverter.ToNPoints(novPage, nevronPoints);
 
-			NMatrix pageTransform;
-			if (NDiagramImporter.IsInLibrary(nevronPathPrimitive))
+			NMatrix novPageTransform;
+			if (IsInLibrary(nevronPathPrimitive))
 			{
 				// The geometry is in a library, so use the transform to the library item as page transform
-				pageTransform = novGeometry.OwnerShape.GetTransformToAncestor(novGeometry.OwnerShape.OwnerLibraryItem);
+				novPageTransform = novGeometry.OwnerShape.GetTransformToAncestor(novGeometry.OwnerShape.OwnerLibraryItem);
 			}
 			else
 			{
 				// The geometry is in a page, so get use the page transform of its owner page
-				pageTransform = novGeometry.OwnerShape.GetPageTransform();
+				novPageTransform = novGeometry.OwnerShape.GetPageTransform();
 			}
 
-            pageTransform.InvertPoints(novPoints);
+			novPageTransform.InvertPoints(novPoints);
 
-            /* This is IDS specific code, which detects and converts rounded rectangles from Nevron Diagram to
+			/* This is IDS specific code, which detects and converts rounded rectangles from Nevron Diagram to
              * rectangles with corner rounding
              * 
             if (IsRoundedRectangle(pathPrimitive))
@@ -107,8 +108,8 @@ namespace Nevron.Nov.Diagram.Converter
                 return;
             }*/
 
-            // Get shape bounds for relative point coordinates calculation
-            NRectangle shapeBounds = novGeometry.OwnerShape.GetWHBox();
+			// Get shape bounds for relative point coordinates calculation
+			NRectangle shapeBounds = novGeometry.OwnerShape.GetWHBox();
 
             // Convert the graphics path points to relative NOV path points
             bool relative;
@@ -206,16 +207,26 @@ namespace Nevron.Nov.Diagram.Converter
             return points.ToArray();
         }
 
-        #endregion
+		/// <summary>
+		/// Checks whether the given Nevron Diagram element is in a library document.
+		/// </summary>
+		/// <param name="nevronDiagramElement"></param>
+		/// <returns></returns>
+		private static bool IsInLibrary(Nevron.Diagram.NDiagramElement nevronDiagramElement)
+		{
+			return nevronDiagramElement.Document is Nevron.Diagram.NLibraryDocument;
+		}
 
-        #region Implementation - IDS Specific
+		#endregion
 
-        /// <summary>
-        /// Checks whether the given Nevron path primitive represents a rounded rectangle.
-        /// </summary>
-        /// <param name="pathPrimitive"></param>
-        /// <returns></returns>
-        private static bool IsRoundedRectangle(Nevron.Diagram.NPathPrimitive pathPrimitive)
+		#region Implementation - IDS Specific
+
+		/// <summary>
+		/// Checks whether the given Nevron path primitive represents a rounded rectangle.
+		/// </summary>
+		/// <param name="pathPrimitive"></param>
+		/// <returns></returns>
+		private static bool IsRoundedRectangle(Nevron.Diagram.NPathPrimitive pathPrimitive)
         {
             // Rounded rectangles in Nevron Diagram are custom paths with 19 points
             byte[] types = pathPrimitive.PathPointsTypes;

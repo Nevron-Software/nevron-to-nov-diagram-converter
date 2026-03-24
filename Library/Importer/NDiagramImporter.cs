@@ -16,24 +16,7 @@ namespace Nevron.Nov.Diagram.Converter
     /// </summary>
     internal abstract class NDiagramImporter
     {
-        #region Protected Overridable
-
-        protected virtual void ApplyStyles(NGeometry novGeometry, Nevron.Diagram.NModel nevronModel)
-        {
-            novGeometry.Fill = NFillStyleImporter.ToFill(nevronModel.ComposeFillStyle());
-            novGeometry.Stroke = NStrokeStyleImporter.ToStroke(nevronModel.ComposeStrokeStyle());
-            novGeometry.BeginArrowhead = NArrowheadStyleImporter.ToArrowhead(nevronModel.ComposeStartArrowheadStyle());
-            novGeometry.EndArrowhead = NArrowheadStyleImporter.ToArrowhead(nevronModel.ComposeEndArrowheadStyle());
-        }
-        protected virtual void AddShapeToGroup(NGroup novGroup, NShape novShape, Nevron.Dom.INNode nevronNode)
-        {
-            novGroup.Shapes.Add(novShape);
-            m_Map.Add(nevronNode, novShape);
-        }
-
-        #endregion
-
-        #region Protected Methods - Initialization
+        #region Initialization
 
         protected void Initialize()
         {
@@ -43,7 +26,21 @@ namespace Nevron.Nov.Diagram.Converter
 
         #endregion
 
-        #region Protected Methods - Page Items
+        #region Styles
+
+        protected virtual void ApplyStyles(NGeometry novGeometry, Nevron.Diagram.NModel nevronModel)
+        {
+            novGeometry.Fill = NFillStyleImporter.ToFill(nevronModel.ComposeFillStyle());
+            novGeometry.Stroke = NStrokeStyleImporter.ToStroke(nevronModel.ComposeStrokeStyle());
+            novGeometry.BeginArrowhead = NArrowheadStyleImporter.ToArrowhead(nevronModel.ComposeStartArrowheadStyle());
+            novGeometry.EndArrowhead = NArrowheadStyleImporter.ToArrowhead(nevronModel.ComposeEndArrowheadStyle());
+        }
+
+		#endregion
+
+		#region Page Items
+
+		protected abstract NPage GetOwnerPage(NShape novShape, Nevron.Diagram.NModel nevronModel);
 
         protected NPageItem CreatePageItem(Nevron.Dom.INNode nevronNode)
         {
@@ -99,6 +96,7 @@ namespace Nevron.Nov.Diagram.Converter
 
             NShape novShape = (NShape)novPageItem;
             Nevron.Diagram.NModel nevronModel = (Nevron.Diagram.NModel)nevronNode;
+			NPage novPage = GetOwnerPage(novShape, nevronModel);
 
             EvaluateNovOwnerDocument(novShape);
 
@@ -108,11 +106,11 @@ namespace Nevron.Nov.Diagram.Converter
 
             if (novShape.ShapeType == ENShapeType.Shape1D)
             {
-                Configure1DShapeSize(novShape, nevronModel);
+                Configure1DShapeSize(novShape, nevronModel, novPage);
             }
 
-            // Import geometry
-            NGeometry novGeometry = NGeometryImporter.Import(novShape, nevronModel);
+			// Import geometry
+            NGeometry novGeometry = NGeometryImporter.Import(novShape, nevronModel, novPage);
             EvaluateNovOwnerDocument(novShape);
 
             if (nevronModel is Nevron.Diagram.NShape nevronShape &&
@@ -169,48 +167,13 @@ namespace Nevron.Nov.Diagram.Converter
 
         #endregion
 
-        #region Protected Methods - Connectors
+        #region Groups and Shapes
 
-        protected void Connect(NShape novConnector, Nevron.Diagram.NShape nevronConnector)
+        protected virtual void AddShapeToGroup(NGroup novGroup, NShape novShape, Nevron.Dom.INNode nevronNode)
         {
-            NPageItem fromPageItem, toPageItem;
-            if (!TryGetNovPageItem(nevronConnector.FromShape, out fromPageItem) ||
-                !TryGetNovPageItem(nevronConnector.ToShape, out toPageItem))
-                return;
-
-            NShape novFromShape = (NShape)fromPageItem;
-            NShape novToShape = (NShape)toPageItem;
-
-            // Determine the ports the connector is connected to
-            Nevron.Diagram.NPort nevronFromPort = nevronConnector.StartPlug.InwardPort;
-            NPort newFromPort = novFromShape.Ports.GetPortByName(nevronFromPort.Name);
-
-            Nevron.Diagram.NPort nevronToPort = nevronConnector.EndPlug.InwardPort;
-            NPort newToPort = novToShape.Ports.GetPortByName(nevronToPort.Name);
-
-            // Try glue the new connector
-            if (newFromPort != null)
-            {
-                novConnector.GlueBeginToPort(newFromPort);
-            }
-            else
-            {
-                novConnector.GlueBeginToShape(novFromShape);
-            }
-
-            if (newToPort != null)
-            {
-                novConnector.GlueEndToPort(newToPort);
-            }
-            else
-            {
-                novConnector.GlueEndToShape(novToShape);
-            }
+            novGroup.Shapes.Add(novShape);
+            m_Map.Add(nevronNode, novShape);
         }
-
-        #endregion
-
-        #region Implementation - Groups and Shapes
 
         private NGroup CreateGroup(Nevron.Diagram.NGroup nevronGroup)
         {
@@ -293,7 +256,44 @@ namespace Nevron.Nov.Diagram.Converter
 
         #endregion
 
-        #region Implementation - Connectors
+        #region Connectors
+
+        protected void Connect(NShape novConnector, Nevron.Diagram.NShape nevronConnector)
+        {
+            NPageItem fromPageItem, toPageItem;
+            if (!TryGetNovPageItem(nevronConnector.FromShape, out fromPageItem) ||
+                !TryGetNovPageItem(nevronConnector.ToShape, out toPageItem))
+                return;
+
+            NShape novFromShape = (NShape)fromPageItem;
+            NShape novToShape = (NShape)toPageItem;
+
+            // Determine the ports the connector is connected to
+            Nevron.Diagram.NPort nevronFromPort = nevronConnector.StartPlug.InwardPort;
+            NPort newFromPort = novFromShape.Ports.GetPortByName(nevronFromPort.Name);
+
+            Nevron.Diagram.NPort nevronToPort = nevronConnector.EndPlug.InwardPort;
+            NPort newToPort = novToShape.Ports.GetPortByName(nevronToPort.Name);
+
+            // Try glue the new connector
+            if (newFromPort != null)
+            {
+                novConnector.GlueBeginToPort(newFromPort);
+            }
+            else
+            {
+                novConnector.GlueBeginToShape(novFromShape);
+            }
+
+            if (newToPort != null)
+            {
+                novConnector.GlueEndToPort(newToPort);
+            }
+            else
+            {
+                novConnector.GlueEndToShape(novToShape);
+            }
+        }
 
         private NShape CreateLine(Nevron.Diagram.NLineShape nevronLine)
         {
@@ -377,11 +377,142 @@ namespace Nevron.Nov.Diagram.Converter
 
 		#endregion
 
-		#region Implementation - Transform
+		#region Transform
 
-		private void SetAngle(NShape novShape, NMatrix novParentPageTransform, Nevron.Diagram.NModel nevronModel)
+		/// <summary>
+		/// Imports the transform of the specified Nevron shape to the given NOV shape.
+		/// </summary>
+		/// <param name="novShape"></param>
+		/// <param name="nevronModel"></param>
+		private void ImportTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+        {
+            NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+			NPage novPage = GetOwnerPage(novShape, nevronModel);
+
+            if (novShape.ShapeType == ENShapeType.Shape1D)
+            {
+				// This is a 1D shape, so import begin and end points and be done with the transform
+				ImportTransform1D(novShape, nevronModel, novPage);
+            }
+			else
+			{
+				ImportTransform2D(novShape, nevronModel, novPage);
+			}
+        }
+		protected virtual void ImportTransform1D(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
 		{
-			// NOTE: The angle is measured as the rotation of a (0,0) (1,0) vector, transformed by a matrix calulated as:
+			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+
+			// This is a 1D shape, so import begin and end points and be done with the transform
+			NPoint beginPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.StartPoint));
+			novShape.SetBeginPoint(beginPoint);
+
+			NPoint endPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.EndPoint));
+			novShape.SetEndPoint(endPoint);
+		}
+		protected virtual void ImportTransform2D(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
+		{
+			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+
+			// 1. Width and Height
+			bool resizeX = novShape.GetFx(NShape.WidthProperty) == null;
+			bool resizeY = novShape.GetFx(NShape.HeightProperty) == null;
+
+			if (resizeX || resizeY)
+			{
+				// NOTE: Width and Height are measured as the distance of the basis points transformed in scene coordinates.
+				// Because in NOV Diagram all shape transformations are not scaling, the measured width and height are correct.
+				NPoint[] points = GetNevronShapeBasisPointsInSceneCoordinates(nevronModel);
+				double width = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[1]));
+				double height = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[2]));
+
+				if (resizeX && resizeY)
+				{
+					novShape.Resize(width, height);
+				}
+				else if (resizeX)
+				{
+					NDebug.Assert(resizeY == false);
+					novShape.SetWidth(width);
+				}
+				else
+				{
+					NDebug.Assert(resizeY);
+					novShape.SetHeight(height);
+				}
+			}
+
+			// 2. Angle
+			if (novShape.GetFx(NShape.AngleProperty) == null)
+			{
+				SetAngle(novShape, novParentPageTransform, nevronModel);
+			}
+
+			// 3. LocPin
+			// NOTE: LocPin is measured relatively to the original 
+			GraphicsCore.NPointF modelPin = nevronModel.ModelPinPoint - nevronModel.ModelBounds.Location;
+
+			novShape.LocPinRelative = true;
+			if (nevronModel.ModelWidth != 0)
+			{
+				novShape.LocPinX = modelPin.X / nevronModel.ModelWidth;
+			}
+			else
+			{
+				novShape.LocPinX = 0.5d;
+			}
+
+			if (nevronModel.ModelHeight != 0)
+			{
+				novShape.LocPinY = modelPin.Y / nevronModel.ModelHeight;
+			}
+			else
+			{
+				novShape.LocPinY = 0.5d;
+			}
+
+			// 4. Set Pin
+			if (novShape.GetFx(NShape.PinXProperty) == null && novShape.GetFx(NShape.PinYProperty) == null)
+			{
+				// NOTE: The Pin defines the offset of the transformation. So it is calculated as the offset of the following transform:
+				// nevronSceneTransform / novParentPageTransform
+				NPoint pin = NDiagramConverter.ToNPoint(novPage, nevronModel.PinPoint);
+				pin = novParentPageTransform.InvertPoint(pin);
+
+				// PinX and PinY do not have expressions, so assign local values
+				novShape.SetPinPoint(pin);
+			}
+		}
+
+		protected virtual NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		{
+			if (novShape.OwnerGroup != null)
+				return novShape.OwnerGroup.GetPageTransform();
+			else
+				return NMatrix.Identity;
+		}
+        /// <summary>
+        /// Configures the size of a 1D shape.
+        /// </summary>
+        /// <param name="novShape"></param>
+        /// <param name="nevronModel"></param>
+		/// <param name="novPage"></param>
+        private void Configure1DShapeSize(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
+        {
+            if (novShape.Width == 0)
+            {
+                novShape.Width = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Width);
+            }
+
+            if (novShape.Height == 0)
+            {
+                novShape.Height = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Height);
+            }
+        }
+
+		protected static void SetAngle(NShape novShape, NMatrix novParentPageTransform, Nevron.Diagram.NModel nevronModel)
+		{
+			// NOTE: The angle is measured as the rotation of a (0,0) (1,0) vector, transformed by a matrix calculated as:
 			// nevronSceneTransform / novParentPageTransform
 			NMatrix nevronSceneTransform = NDiagramConverter.ToNMatrix(nevronModel.SceneTransform);
 			NMatrix novTransform = nevronSceneTransform;
@@ -394,160 +525,9 @@ namespace Nevron.Nov.Diagram.Converter
 			novShape.SetAngle(new NAngle(angle, NUnit.Radian));
 		}
 
-		/// <summary>
-		/// Imports the transform of the specified Nevron shape to the given NOV shape.
-		/// </summary>
-		/// <param name="novShape"></param>
-		/// <param name="nevronModel"></param>
-		private void ImportTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
-        {
-            NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
-			NPage novPage = novShape.OwnerPage;
-
-            if (novShape.ShapeType == ENShapeType.Shape1D)
-            {
-				// This is a 1D shape, so import begin and end points and be done with the transform
-                NPoint beginPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.StartPoint));
-                novShape.SetBeginPoint(beginPoint);
-
-                NPoint endPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.EndPoint));
-                novShape.SetEndPoint(endPoint);
-
-				if (IsInLibrary(nevronModel) && !(nevronModel is Nevron.Diagram.NLineShape))
-				{
-					SetAngle(novShape, novParentPageTransform, nevronModel);
-				}
-
-                return;
-            }
-
-            #region Set Width and Height
-
-            bool resizeX = novShape.GetFx(NShape.WidthProperty) == null;
-            bool resizeY = novShape.GetFx(NShape.HeightProperty) == null;
-
-            if (resizeX || resizeY)
-            {
-                // NOTE: Width and Height are measured as the distance of the basis points transformed in scene coordinates.
-                // Because in NOV Diagram all shape transformations are not scaling, the measured width and height are correct.
-                NPoint[] points = GetNevronShapeBasisPointsInSceneCoordinates(nevronModel);
-                double width = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[1]));
-                double height = NDiagramConverter.ConvertCoordinate(novPage, NGeometry2D.PointsDistance(points[0], points[2]));
-
-                if (resizeX && resizeY)
-                {
-                    novShape.Resize(width, height);
-                }
-                else if (resizeX)
-                {
-                    NDebug.Assert(resizeY == false);
-                    novShape.SetWidth(width);
-                }
-                else
-                {
-                    NDebug.Assert(resizeY);
-                    novShape.SetHeight(height);
-                }
-            }
-
-            #endregion
-
-            #region Set Angle
-
-            if (novShape.GetFx(NShape.AngleProperty) == null)
-            {
-				SetAngle(novShape, novParentPageTransform, nevronModel);
-            }
-
-            #endregion
-
-            #region Set LocPin
-
-            // NOTE: LocPin is measured relatively to the original 
-            GraphicsCore.NPointF modelPin = nevronModel.ModelPinPoint - nevronModel.ModelBounds.Location;
-
-            novShape.LocPinRelative = true;
-            if (nevronModel.ModelWidth != 0)
-            {
-                novShape.LocPinX = modelPin.X / nevronModel.ModelWidth;
-            }
-            else
-            {
-                novShape.LocPinX = 0.5d;
-            }
-
-            if (nevronModel.ModelHeight != 0)
-            {
-                novShape.LocPinY = modelPin.Y / nevronModel.ModelHeight;
-            }
-            else
-            {
-                novShape.LocPinY = 0.5d;
-            }
-
-            #endregion
-
-            #region Set Pin
-
-            if (novShape.GetFx(NShape.PinXProperty) == null && novShape.GetFx(NShape.PinYProperty) == null)
-            {
-                // NOTE: The Pin defines the offset of the transformation. So it is calculated as the offset of the following transform:
-                // nevronSceneTransform / novParentPageTransform
-                NPoint pin = NDiagramConverter.ToNPoint(novPage, nevronModel.PinPoint);
-                pin = novParentPageTransform.InvertPoint(pin);
-
-                // PinX and PinY do not have expressions, so assign local values
-                novShape.SetPinPoint(pin);
-            }
-
-            #endregion
-        }
-        /// <summary>
-        /// Configures the size of a 1D shape.
-        /// </summary>
-        /// <param name="novShape"></param>
-        /// <param name="nevronModel"></param>
-        private void Configure1DShapeSize(NShape novShape, Nevron.Diagram.NModel nevronModel)
-        {
-            if (novShape.Width == 0)
-            {
-                novShape.Width = NDiagramConverter.ConvertCoordinate(novShape.OwnerPage, nevronModel.Width);
-            }
-
-            if (novShape.Height == 0)
-            {
-                novShape.Height = NDiagramConverter.ConvertCoordinate(novShape.OwnerPage, nevronModel.Height);
-            }
-        }
-        private NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
-        {
-            NMatrix matrix;
-            if (novShape.OwnerGroup != null)
-            {
-                matrix = novShape.OwnerGroup.GetPageTransform();
-            }
-            else
-            {
-                matrix = NMatrix.Identity;
-            }
-
-            if (IsInLibrary(nevronModel))
-            {
-                // If the Nevron model is in a composite shape or a group, translate the matrix with the owner shape's location,
-                // because the inner shape's pin point expressions will get wrong otherwise.
-                Nevron.Diagram.NShape ownerCompositeShapeOrGroup = GetOwnerCompositeShapeOrGroup(nevronModel);
-                if (ownerCompositeShapeOrGroup != null)
-                {
-                    matrix.Translate(ownerCompositeShapeOrGroup.Location.X, ownerCompositeShapeOrGroup.Location.Y);
-                }
-            }
-
-            return matrix;
-        }
-
         #endregion
 
-        #region Implementation - Text
+        #region Text
 
         private void ImportText(NShape novShape, Nevron.Diagram.NModel nevronModel)
         {
@@ -605,9 +585,18 @@ namespace Nevron.Nov.Diagram.Converter
 
         #endregion
 
-        #region Implementation - Helpers
+        #region Fields
 
-        private void EvaluateNovOwnerDocument(NElement element)
+		protected NPage m_CurrentPage;
+
+        private NMap<Nevron.Dom.INNode, NPageItem> m_Map;
+        private NConnectorShapeFactory m_ConnectorFactory;
+
+        #endregion
+
+        #region Static Helpers
+
+        private static void EvaluateNovOwnerDocument(NElement element)
         {
             element.OwnerDocument.Evaluate();
         }
@@ -615,7 +604,7 @@ namespace Nevron.Nov.Diagram.Converter
         /// Gets the basis points of the given Nevron shape in model coordinates.
         /// </summary>
         /// <returns></returns>
-        private NPoint[] GetNevronShapeBasisPointsInModelCoordinates(Nevron.Diagram.NModel nevronModel)
+        private static NPoint[] GetNevronShapeBasisPointsInModelCoordinates(Nevron.Diagram.NModel nevronModel)
         {
             GraphicsCore.NRectangleF modelBounds = nevronModel.ModelBounds;
             return new NPoint[] {
@@ -628,54 +617,11 @@ namespace Nevron.Nov.Diagram.Converter
         /// Gets the basis points of the given Nevron shape in scene coordinates.
         /// </summary>
         /// <returns></returns>
-        private NPoint[] GetNevronShapeBasisPointsInSceneCoordinates(Nevron.Diagram.NModel nevronModel)
+        private static NPoint[] GetNevronShapeBasisPointsInSceneCoordinates(Nevron.Diagram.NModel nevronModel)
         {
             NPoint[] points = GetNevronShapeBasisPointsInModelCoordinates(nevronModel);
             NDiagramConverter.ToNMatrix(nevronModel.SceneTransform).TransformPoints(points);
             return points;
-        }
-
-        #endregion
-
-        #region Fields
-
-		protected NPage m_CurrentPage;
-
-        private NMap<Nevron.Dom.INNode, NPageItem> m_Map;
-        private NConnectorShapeFactory m_ConnectorFactory;
-
-        #endregion
-
-        #region Static Methods
-
-        /// <summary>
-        /// Checks whether the given Nevron Diagram element is in a library document.
-        /// </summary>
-        /// <param name="nevronDiagramElement"></param>
-        /// <returns></returns>
-        internal static bool IsInLibrary(Nevron.Diagram.NDiagramElement nevronDiagramElement)
-        {
-            return nevronDiagramElement.Document is Nevron.Diagram.NLibraryDocument;
-        }
-
-        /// <summary>
-        /// Gets the owner composite shape (if any) of the given Nevron model.
-        /// </summary>
-        /// <param name="nevronModel"></param>
-        /// <returns></returns>
-        private static Nevron.Diagram.NShape GetOwnerCompositeShapeOrGroup(Nevron.Diagram.NModel nevronModel)
-        {
-            Nevron.Dom.INNode nevronNode = nevronModel;
-            while (nevronNode != null)
-            {
-                nevronNode = nevronNode.ParentNode;
-                if (nevronNode is Nevron.Diagram.NCompositeShape nevronCompositeShape)
-                    return nevronCompositeShape;
-                else if (nevronNode is Nevron.Diagram.NGroup nevronGroup)
-                    return nevronGroup;
-            }
-
-            return null;
         }
 
         #endregion

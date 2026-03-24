@@ -1,8 +1,10 @@
-﻿namespace Nevron.Nov.Diagram.Converter
+﻿using Nevron.Nov.Graphics;
+
+namespace Nevron.Nov.Diagram.Converter
 {
     internal class NLibraryImporter : NDiagramImporter
     {
-        #region Public Methods
+        #region Public Methods - Import
 
         /// <summary>
         /// Creates a NOV library document from the given Nevron library document.
@@ -29,17 +31,17 @@
             return novLibraryDocument;
         }
 
-        #endregion
+		#endregion
 
-        #region Protected Overrides
+		#region Styles
 
-        /// <summary>
-        /// Applies styles to the given NOV geometry. Overriden to apply default Nevron Drawing Document styles if styles are not specified
-        /// for the given Nevron model.
-        /// </summary>
-        /// <param name="novGeometry"></param>
-        /// <param name="nevronModel"></param>
-        protected override void ApplyStyles(NGeometry novGeometry, Nevron.Diagram.NModel nevronModel)
+		/// <summary>
+		/// Applies styles to the given NOV geometry. Overriden to apply default Nevron Drawing Document styles if styles are not specified
+		/// for the given Nevron model.
+		/// </summary>
+		/// <param name="novGeometry"></param>
+		/// <param name="nevronModel"></param>
+		protected override void ApplyStyles(NGeometry novGeometry, Nevron.Diagram.NModel nevronModel)
         {
             GraphicsCore.NFillStyle nevronFillStyle = nevronModel.ComposeFillStyle() ?? m_DefaultNevronFillStyle;
             novGeometry.Fill = NFillStyleImporter.ToFill(nevronFillStyle);
@@ -54,16 +56,114 @@
             novGeometry.EndArrowhead = NArrowheadStyleImporter.ToArrowhead(nevronEndArrowheadStyle);
         }
 
-        #endregion
+        private void InitializeDefaultNevronStyles()
+        {
+            Nevron.Diagram.NDrawingDocument nevronDrawingDocument = new Nevron.Diagram.NDrawingDocument();
 
-        #region Implementation
+            m_DefaultNevronFillStyle = nevronDrawingDocument.ComposeFillStyle();
+            m_DefaultNevronStrokeStyle = nevronDrawingDocument.ComposeStrokeStyle();
+            m_DefaultNevronBeginArrowheadStyle = nevronDrawingDocument.ComposeStartArrowheadStyle();
+            m_DefaultNevronEndArrowheadStyle = nevronDrawingDocument.ComposeEndArrowheadStyle();
+        }
 
-        /// <summary>
-        /// Converts the given Nevron master to a NOV library item.
-        /// </summary>
-        /// <param name="nevronMaster"></param>
-        /// <returns></returns>
-        private NLibraryItem ImportMaster(NLibrary novLibrary, Nevron.Diagram.NMaster nevronMaster)
+		#endregion
+
+		#region Page Items
+
+		protected override NPage GetOwnerPage(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		{
+			Nevron.Diagram.NMaster nevronMaster = GetOwnerMaster(nevronModel);
+
+			NUnit novUnit;
+			if (nevronMaster != null && NDiagramConverter.TryConvertUnit(nevronMaster.MeasurementUnit, out novUnit))
+			{
+				NPage novPage = new NPage();
+				novPage.DisplayLength = new NLength(1, novUnit);
+				return novPage;
+			}
+			else
+			{
+				return null;
+			}
+		}
+
+		#endregion
+
+		#region Transform
+
+		protected override void ImportTransform1D(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
+		{
+			base.ImportTransform1D(novShape, nevronModel, novPage);
+
+			if (!(nevronModel is Nevron.Diagram.NLineShape))
+			{
+				NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+				SetAngle(novShape, novParentPageTransform, nevronModel);
+			}
+		}
+		protected override NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		{
+			NMatrix matrix = base.GetNovParentShapePageTransform(novShape, nevronModel);
+
+			// If the Nevron model is in a composite shape or a group, translate the matrix with the owner shape's location,
+			// because the inner shape's pin point expressions will get wrong otherwise.
+			Nevron.Diagram.NShape ownerCompositeShapeOrGroup = GetOwnerCompositeShapeOrGroup(nevronModel);
+			if (ownerCompositeShapeOrGroup != null)
+			{
+				matrix.Translate(ownerCompositeShapeOrGroup.Location.X, ownerCompositeShapeOrGroup.Location.Y);
+			}
+
+			return matrix;
+		}
+
+		/// <summary>
+		/// Gets the owner composite shape (if any) of the given Nevron model.
+		/// </summary>
+		/// <param name="nevronModel"></param>
+		/// <returns></returns>
+		private static Nevron.Diagram.NShape GetOwnerCompositeShapeOrGroup(Nevron.Diagram.NModel nevronModel)
+		{
+			Nevron.Dom.INNode nevronNode = nevronModel;
+			while (nevronNode != null)
+			{
+				nevronNode = nevronNode.ParentNode;
+				if (nevronNode is Nevron.Diagram.NCompositeShape nevronCompositeShape)
+					return nevronCompositeShape;
+				else if (nevronNode is Nevron.Diagram.NGroup nevronGroup)
+					return nevronGroup;
+			}
+
+			return null;
+		}
+		/// <summary>
+		/// Gets the master that owns the given model.
+		/// </summary>
+		/// <param name="nevronModel"></param>
+		/// <returns></returns>
+		private static Nevron.Diagram.NMaster GetOwnerMaster(Nevron.Diagram.NModel nevronModel)
+		{
+			Nevron.Dom.INNode nevronNode = nevronModel;
+			while (nevronNode != null)
+			{
+				if (nevronNode is Nevron.Diagram.NMaster nevronMaster)
+					return nevronMaster;
+
+				nevronNode = nevronNode.ParentNode;
+			}
+
+			return null;
+		}
+
+		#endregion
+
+		#region Masters
+
+		/// <summary>
+		/// Converts the given Nevron master to a NOV library item.
+		/// </summary>
+		/// <param name="nevronMaster"></param>
+		/// <returns></returns>
+		private NLibraryItem ImportMaster(NLibrary novLibrary, Nevron.Diagram.NMaster nevronMaster)
         {
             NLibraryItem libraryItem = new NLibraryItem();
             libraryItem.Name = nevronMaster.Name;
@@ -89,15 +189,6 @@
             }
 
             return libraryItem;
-        }
-        private void InitializeDefaultNevronStyles()
-        {
-            Nevron.Diagram.NDrawingDocument nevronDrawingDocument = new Nevron.Diagram.NDrawingDocument();
-
-            m_DefaultNevronFillStyle = nevronDrawingDocument.ComposeFillStyle();
-            m_DefaultNevronStrokeStyle = nevronDrawingDocument.ComposeStrokeStyle();
-            m_DefaultNevronBeginArrowheadStyle = nevronDrawingDocument.ComposeStartArrowheadStyle();
-            m_DefaultNevronEndArrowheadStyle = nevronDrawingDocument.ComposeEndArrowheadStyle();
         }
 
         #endregion
