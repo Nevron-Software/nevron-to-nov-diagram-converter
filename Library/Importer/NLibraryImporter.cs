@@ -75,8 +75,11 @@ namespace Nevron.Nov.Diagram.Converter
 			Nevron.Diagram.NMaster nevronMaster = GetOwnerMaster(nevronModel);
 
 			NUnit novUnit;
-			if (nevronMaster != null && NDiagramConverter.TryConvertUnit(nevronMaster.MeasurementUnit, out novUnit))
+			if (nevronMaster != null &&
+				NDiagramConverter.TryConvertUnit(nevronMaster.MeasurementUnit, out novUnit) &&
+				novUnit.Dimension == ENUnitDimension.Length)
 			{
+				// Create a dummy page just for scaling
 				NPage novPage = new NPage();
 				novPage.DisplayLength = new NLength(1, novUnit);
 				return novPage;

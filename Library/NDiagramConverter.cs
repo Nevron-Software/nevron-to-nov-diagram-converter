@@ -50,9 +50,16 @@ namespace Nevron.Nov.Diagram.Converter
 			}
 
 			// Apply the license keys
-			Nevron.NLicenseManager.Instance.SetLicense(new Nevron.NLicense(nevronLicense));
-			Nevron.NLicenseManager.Instance.LockLicense = true;
-			NLicenseManager.Instance.SetLicense(novLicense);
+			if (!string.IsNullOrEmpty(nevronLicense))
+			{
+				Nevron.NLicenseManager.Instance.SetLicense(new Nevron.NLicense(nevronLicense));
+				Nevron.NLicenseManager.Instance.LockLicense = true;
+			}
+
+			if (!string.IsNullOrEmpty(novLicense))
+			{
+				NLicenseManager.Instance.SetLicense(novLicense);
+			}
 		}
 
 		#endregion
