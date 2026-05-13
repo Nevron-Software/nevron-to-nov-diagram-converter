@@ -100,20 +100,21 @@ namespace Nevron.Nov.Diagram.Converter
 
 			if (!(nevronModel is Nevron.Diagram.NLineShape))
 			{
-				NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+				NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel, novPage);
 				SetAngle(novShape, novParentPageTransform, nevronModel);
 			}
 		}
-		protected override NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		protected override NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
 		{
-			NMatrix matrix = base.GetNovParentShapePageTransform(novShape, nevronModel);
+			NMatrix matrix = base.GetNovParentShapePageTransform(novShape, nevronModel, novPage);
 
 			// If the Nevron model is in a composite shape or a group, translate the matrix with the owner shape's location,
 			// because the inner shape's pin point expressions will get wrong otherwise.
 			Nevron.Diagram.NShape ownerCompositeShapeOrGroup = GetOwnerCompositeShapeOrGroup(nevronModel);
 			if (ownerCompositeShapeOrGroup != null)
 			{
-				matrix.Translate(ownerCompositeShapeOrGroup.Location.X, ownerCompositeShapeOrGroup.Location.Y);
+				NPoint location = NDiagramConverter.ToNPoint(novPage, ownerCompositeShapeOrGroup.Location);
+				matrix.Translate(location.X, location.Y);
 			}
 
 			return matrix;

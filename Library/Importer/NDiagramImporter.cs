@@ -101,7 +101,7 @@ namespace Nevron.Nov.Diagram.Converter
             EvaluateNovOwnerDocument(novShape);
 
             // Import shape transform
-            ImportTransform(novShape, nevronModel);
+            ImportTransform(novShape, nevronModel, novPage);
             EvaluateNovOwnerDocument(novShape);
 
             if (novShape.ShapeType == ENShapeType.Shape1D)
@@ -202,7 +202,12 @@ namespace Nevron.Nov.Diagram.Converter
         private NGroup CreateGroup(Nevron.Diagram.NCompositeShape nevronCompositeShape)
         {
             NGroup novGroup = new NGroup();
-            ImportShapeTextAndProtections(novGroup, nevronCompositeShape);
+            bool textImported = ImportShapeTextAndProtections(novGroup, nevronCompositeShape);
+			if (textImported)
+			{
+				// The group created by the composite shape
+				novGroup.ElementsZOrder = ENGroupElementsZOrder.AboveShapes;
+			}
 
             // Import the Nevron group shapes
             Nevron.Dom.NNodeList primitives = nevronCompositeShape.Primitives.Children(null);
@@ -242,16 +247,24 @@ namespace Nevron.Nov.Diagram.Converter
 
             return novShape;
         }
-        private void ImportShapeTextAndProtections(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		/// <summary>
+		/// Imoprts the text and the protections of the given nevron model in the specified NOV shape.
+		/// </summary>
+		/// <param name="novShape"></param>
+		/// <param name="nevronModel"></param>
+		/// <returns>Whether any text was imported or not.</returns>
+        private bool ImportShapeTextAndProtections(NShape novShape, Nevron.Diagram.NModel nevronModel)
         {
             // Import text
-            ImportText(novShape, nevronModel);
+            bool textImported = ImportText(novShape, nevronModel);
 
             // Import interactivity style
             NInteractivityStyleImporter.Import(novShape, Nevron.Diagram.NStyle.GetInteractivityStyle(nevronModel));
 
             // Import protections
             NProtectionsImporter.ImportProtections(novShape, nevronModel.Protection);
+
+			return textImported;
         }
 
         #endregion
@@ -278,7 +291,9 @@ namespace Nevron.Nov.Diagram.Converter
             // Try glue the new connector
             if (newFromPort != null)
             {
-                novConnector.GlueBeginToPort(newFromPort);
+				// Gluing to the nearest port seems
+                //novConnector.GlueBeginToPort(newFromPort);
+				novConnector.GlueBeginToNearestPort(novFromShape);
             }
             else
             {
@@ -287,8 +302,9 @@ namespace Nevron.Nov.Diagram.Converter
 
             if (newToPort != null)
             {
-                novConnector.GlueEndToPort(newToPort);
-            }
+                //novConnector.GlueEndToPort(newToPort);
+                novConnector.GlueEndToNearestPort(novToShape);
+			}
             else
             {
                 novConnector.GlueEndToShape(novToShape);
@@ -320,32 +336,37 @@ namespace Nevron.Nov.Diagram.Converter
         private NShape CreateStep3Connector(Nevron.Diagram.NStep3Connector nevronConnector)
         {
             NShape novConnector;
+
             if (nevronConnector.FirstVertical)
             {
                 novConnector = m_ConnectorFactory.CreateShape(ENConnectorShape.BottomToTop1);
+				NControl control = novConnector.Controls[0];
 
-                if (nevronConnector.UseMiddleControlPointPercent)
-                {
-                    novConnector.Controls[0].SetFx(NControl.YProperty,
-                        new NShapeWidthFactorFx(nevronConnector.MiddleControlPointPercent / 100.0));
-                }
-                else
-                {
-                }
-            }
+				if (nevronConnector.UseMiddleControlPointPercent)
+				{
+					control.SetFx(NControl.YProperty, new NShapeHeightFactorFx(nevronConnector.MiddleControlPointPercent / 100.0));
+				}
+				else
+				{
+					control.YBehavior = ENCoordinateBehavior.OffsetFromMin;
+					control.SetLocation(new NPoint(0, nevronConnector.MiddleControlPointOffset));
+				}
+			}
             else
             {
                 novConnector = m_ConnectorFactory.CreateShape(ENConnectorShape.SideToSide1);
+				NControl control = novConnector.Controls[0];
 
-                if (nevronConnector.UseMiddleControlPointPercent)
+				if (nevronConnector.UseMiddleControlPointPercent)
                 {
-                    novConnector.Controls[0].SetFx(NControl.XProperty,
-                        new NShapeWidthFactorFx(nevronConnector.MiddleControlPointPercent / 100.0));
+                    control.SetFx(NControl.XProperty, new NShapeWidthFactorFx(nevronConnector.MiddleControlPointPercent / 100.0));
                 }
                 else
                 {
-                }
-            }
+					control.XBehavior = ENCoordinateBehavior.OffsetFromMin;
+					control.SetLocation(new NPoint(nevronConnector.MiddleControlPointOffset, 0));
+				}
+			}
 
 			ImportShapeTextAndProtections(novConnector, nevronConnector);
 			return novConnector;
@@ -384,11 +405,9 @@ namespace Nevron.Nov.Diagram.Converter
 		/// </summary>
 		/// <param name="novShape"></param>
 		/// <param name="nevronModel"></param>
-		private void ImportTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		/// <param name="novPage"></param>
+		private void ImportTransform(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
         {
-            NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
-			NPage novPage = GetOwnerPage(novShape, nevronModel);
-
             if (novShape.ShapeType == ENShapeType.Shape1D)
             {
 				// This is a 1D shape, so import begin and end points and be done with the transform
@@ -401,7 +420,7 @@ namespace Nevron.Nov.Diagram.Converter
         }
 		protected virtual void ImportTransform1D(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
 		{
-			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel, novPage);
 
 			// This is a 1D shape, so import begin and end points and be done with the transform
 			NPoint beginPoint = novParentPageTransform.InvertPoint(NDiagramConverter.ToNPoint(novPage, nevronModel.StartPoint));
@@ -412,7 +431,7 @@ namespace Nevron.Nov.Diagram.Converter
 		}
 		protected virtual void ImportTransform2D(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
 		{
-			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel);
+			NMatrix novParentPageTransform = GetNovParentShapePageTransform(novShape, nevronModel, novPage);
 
 			// 1. Width and Height
 			bool resizeX = novShape.GetFx(NShape.WidthProperty) == null;
@@ -484,7 +503,7 @@ namespace Nevron.Nov.Diagram.Converter
 			}
 		}
 
-		protected virtual NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel)
+		protected virtual NMatrix GetNovParentShapePageTransform(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
 		{
 			if (novShape.OwnerGroup != null)
 				return novShape.OwnerGroup.GetPageTransform();
@@ -499,12 +518,12 @@ namespace Nevron.Nov.Diagram.Converter
 		/// <param name="novPage"></param>
         private void Configure1DShapeSize(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
         {
-            if (novShape.Width == 0)
+            if (novShape.Width == 0 && novShape.GetFx(NShape.WidthProperty) == null)
             {
                 novShape.Width = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Width);
             }
 
-            if (novShape.Height == 0)
+            if (novShape.Height == 0 && novShape.GetFx(NShape.HeightProperty) == null)
             {
                 novShape.Height = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Height);
             }
@@ -529,7 +548,7 @@ namespace Nevron.Nov.Diagram.Converter
 
         #region Text
 
-        private void ImportText(NShape novShape, Nevron.Diagram.NModel nevronModel)
+        private bool ImportText(NShape novShape, Nevron.Diagram.NModel nevronModel)
         {
             string text;
             if (nevronModel is Nevron.Diagram.NShape nevronShape)
@@ -542,15 +561,15 @@ namespace Nevron.Nov.Diagram.Converter
             }
             else
             {
-                return;
+                return false;
             }
 
-            ImportText(novShape, nevronModel, text);
+            return ImportText(novShape, nevronModel, text);
         }
-        private void ImportText(NShape novShape, Nevron.Diagram.NStyleableElement nevronElement, string text)
+        private bool ImportText(NShape novShape, Nevron.Diagram.NStyleableElement nevronElement, string text)
         {
             if (String.IsNullOrEmpty(text))
-                return;
+                return false;
 
             GraphicsCore.NTextStyle nevronTextStyle = nevronElement.ComposeTextStyle();
 
@@ -580,7 +599,8 @@ namespace Nevron.Nov.Diagram.Converter
             }
 
             // Import Nevron text style
-            NTextStyleImporter.ImportStyle((NTextBlock)novShape.TextBlock, nevronTextStyle);
+            NTextStyleImporter.ImportStyle((NTextBlock)novShape.TextBlock, nevronElement, nevronTextStyle);
+			return true;
         }
 
         #endregion

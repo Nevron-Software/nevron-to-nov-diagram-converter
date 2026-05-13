@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Nevron.Nov.Diagram.Converter
+﻿namespace Nevron.Nov.Diagram.Converter
 {
 	internal static class NPortsImporter
 	{

@@ -1,4 +1,6 @@
-﻿namespace Nevron.Nov.Diagram.Converter
+﻿using Nevron.Nov.DataStructures;
+
+namespace Nevron.Nov.Diagram.Converter
 {
 	internal class NDrawingImporter : NDiagramImporter
     {
@@ -56,9 +58,9 @@
                 }
             }
 
-            // Pass 3:
-            // Connect the shapes
-            Nevron.Dom.NNodeList nevronConnectors = drawingDocument.Descendants(Nevron.Diagram.Filters.NFilters.Shape1D, -1);
+			// Pass 3:
+			// Connect the shapes
+			Nevron.Dom.NNodeList nevronConnectors = drawingDocument.Descendants(Nevron.Diagram.Filters.NFilters.Shape1D, -1);
             for (int i = 0; i < nevronConnectors.Count; i++)
             {
                 Nevron.Diagram.NShape nevronConnector = (Nevron.Diagram.NShape)nevronConnectors[i];
@@ -70,6 +72,13 @@
                     Connect((NShape)novConnector, nevronConnector);
                 }
             }
+
+			// Invalidate display of all shapes, because without this their geometry is not drawn correctly for some reason
+			NList<NShape> shapes = m_CurrentPage.GetShapes(true);
+			for (int i = 0; i < shapes.Count; i++)
+			{
+				shapes[i].InvalidateDisplay();
+			}
 
             return novDrawingDocument;
         }

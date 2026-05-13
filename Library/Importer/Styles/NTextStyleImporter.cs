@@ -1,4 +1,6 @@
-﻿using Nevron.Nov.Graphics;
+﻿using System.Drawing;
+
+using Nevron.Nov.Graphics;
 using Nevron.Nov.Text;
 
 namespace Nevron.Nov.Diagram.Converter
@@ -7,7 +9,7 @@ namespace Nevron.Nov.Diagram.Converter
 	{
 		#region Public Methods
 
-		public static void ImportStyle(NTextBlock novTextBlock, GraphicsCore.NTextStyle nevronTextStyle)
+		public static void ImportStyle(NTextBlock novTextBlock, Nevron.Diagram.NStyleableElement nevronElement, GraphicsCore.NTextStyle nevronTextStyle)
 		{
 			if (novTextBlock == null || nevronTextStyle == null)
 				return;
@@ -35,8 +37,34 @@ namespace Nevron.Nov.Diagram.Converter
 				novTextBlock.VerticalAlignment = ToVerticalAlignment(stringFormat.VertAlign);
 			}
 
-			// Other settings
-			novTextBlock.KeepUpward = false;
+			// Text direction
+			if (nevronElement is Nevron.Diagram.NShape nevronShape &&
+				nevronShape.Labels != null &&
+				nevronShape.Labels.DefaultLabel is Nevron.Diagram.NLogicalLineLabel label &&
+				label.AllowDownwardOrientation)
+			{
+				novTextBlock.KeepUpward = false;
+			}
+
+			// Text mode
+			if (nevronElement is Nevron.Diagram.NTextPrimitive nevronTextPrimitive &&
+				nevronTextPrimitive.Mode == Nevron.Diagram.BoxTextMode.Stretch)
+			{
+				// Stretch the text to the text primitive bounds
+				double resolution = NApplication.DesktopDocument.GetResolution();
+				string text = novTextBlock.Text;
+				NFont font = new NFont(novTextBlock.FontName, novTextBlock.FontSize, novTextBlock.FontStyle);
+
+				// Increase the font size until it fits in the available area
+				NSize size = font.MeasureString(text, resolution);
+				while (size.Width < nevronTextPrimitive.Width && size.Height < nevronTextPrimitive.Height)
+				{
+					font.Size++;
+					size = font.MeasureString(text, resolution);
+				}
+
+				novTextBlock.FontSize = font.Size - 1;
+			}
 		}
 		public static void ImportPosition(NTextBlock novTextBlock, GraphicsCore.NTextStyle nevronTextStyle)
 		{
