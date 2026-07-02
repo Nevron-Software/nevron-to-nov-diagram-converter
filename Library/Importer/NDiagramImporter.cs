@@ -518,16 +518,42 @@ namespace Nevron.Nov.Diagram.Converter
 		/// <param name="novPage"></param>
         private void Configure1DShapeSize(NShape novShape, Nevron.Diagram.NModel nevronModel, NPage novPage)
         {
-            if (novShape.Width == 0 && novShape.GetFx(NShape.WidthProperty) == null)
+            if (novShape.Width == 0)
             {
-                novShape.Width = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Width);
-            }
+				NExpression widthExpression = novShape.GetFx(NShape.WidthProperty);
+				double novWidth = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Width);
 
-            if (novShape.Height == 0 && novShape.GetFx(NShape.HeightProperty) == null)
+				if (widthExpression == null)
+				{
+					// No width expression is set, so assign the width of the shape to the model width
+					novShape.Width = novWidth;
+				}
+				else if (widthExpression is NResizeInGroupFx resizeInGroupFx &&
+					novShape.OwnerGroup is NGroup group && group.Width != 0)
+				{
+					novShape.Width = novWidth;
+					novShape.SetFx(NShape.WidthProperty, new NResizeInGroupFx(novWidth / group.Width, 0));
+				}
+			}
+
+            if (novShape.Height == 0)
             {
-                novShape.Height = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Height);
-            }
-        }
+				NExpression heightExpression = novShape.GetFx(NShape.HeightProperty);
+				double novHeight = NDiagramConverter.ConvertCoordinate(novPage, nevronModel.Height);
+
+				if (heightExpression == null)
+				{
+					// No height expression is set, so assign the height of the shape to the model height
+					novShape.Height = novHeight;
+				}
+				else if (heightExpression is NResizeInGroupFx resizeInGroupFx &&
+					novShape.OwnerGroup is NGroup group && group.Height != 0)
+				{
+					novShape.Height = novHeight;
+					novShape.SetFx(NShape.HeightProperty, new NResizeInGroupFx(0, novHeight / group.Height));
+				}
+			}
+		}
 
 		protected static void SetAngle(NShape novShape, NMatrix novParentPageTransform, Nevron.Diagram.NModel nevronModel)
 		{
